@@ -173,7 +173,7 @@ if ($db)
         if ($zipBackup -eq "true")
         {
             Write-Output "Zipping the backup"
-            $output=invoke-expression 'cmd /c 7z a -tzip "$backupFilePath.zip" $fullBackupFilePath $logBackupFilePath'
+            $output=invoke-expression 'cmd /c 7z a -tzip "$fullBackupFilePath.zip" $fullBackupFilePath $logBackupFilePath'
             Write-Output $output
             if ($output -match "Everything is Ok")
             {
