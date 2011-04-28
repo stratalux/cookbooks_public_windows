@@ -24,3 +24,16 @@
 [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SmoExtended") | Out-Null
 [Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.ConnectionInfo") | Out-Null
 [Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SmoEnum") | Out-Null
+
+# A function for iterating and reporting errors.  Called from the catch block for calls to [Microsoft.SqlServer.Management.Smo.Backup]::SqlBackup
+function Resolve-Error ($ErrorRecord=$Error[0])
+{
+    $ErrorRecord | Format-List * -Force
+    $ErrorRecord.InvocationInfo |Format-List *
+    $Exception = $ErrorRecord.Exception
+    for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+    {
+        "$i" * 80
+        $Exception |Format-List * -Force
+    }
+}

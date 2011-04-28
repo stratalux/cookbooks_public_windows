@@ -72,6 +72,9 @@ $backupDir     = Get-Item $backupDirPath -ea Stop
 # rename existing .bak to .old after deleting existing .old files.
 foreach ($backupFile in $backupDir.GetFiles($existingBackupFileNamePattern)) { ren $backupFile.FullName ($backupFile.Name + ".old") }
 
+# TODO: account for the new _full and _log files.  We'll need to double the count for these, and check to see if the _log
+# even exists in case we're running on an instance that kept some old stuff around.
+
 $oldcount=$backupDir.GetFiles($existingBackupFileNamePattern+".old").count
 # TODO: cleanup old backup files by some algorithm (allow 3 per database, older than 1 week, etc.)
 if ($oldcount -gt $maxoldbackups)
@@ -109,35 +112,25 @@ if ($db)
 {
     $dbName         = $db.Name
     $timestamp      = Get-Date -format yyyyMMddHHmmss
-    $backupFileName = $backupFileNameFormat -f $dbName, $timestamp
-    $backupFilePath = Join-Path $backupDirPath $backupFileName
 
-    $backup                      = New-Object ("Microsoft.SqlServer.Management.Smo.Backup")
-    $backup.Action               = "Database"  # full database backup. TODO: also backup the transaction log.
-    $backup.BackupSetDescription = "Full backup of $dbName"
-    $backup.BackupSetName        = "$dbName backup"
-    $backup.Database             = $dbName
-    $backup.MediaDescription     = "Disk"
-    $backup.LogTruncation        = "Truncate"
-    $backup.Devices.AddDevice($backupFilePath, "File")
+    # Full backup
+    $fullBackupFileName = $backupFileNameFormat -f $dbName, $timestamp, "full"
+    $fullBackupFilePath = Join-Path $backupDirPath $fullBackupFileName
+
+    $fullBackup                      = New-Object ("Microsoft.SqlServer.Management.Smo.Backup")
+    $fullBackup.Action               = [Microsoft.SqlServer.Management.Smo.BackupActionType]::Database  # full database backup.
+    $fullBackup.BackupSetDescription = "Full backup of $dbName"
+    $fullBackup.BackupSetName        = "$dbName backup"
+    $fullBackup.Database             = $dbName
+    $fullBackup.MediaDescription     = "Disk"
+    $fullBackup.LogTruncation        = "Truncate"
+    $fullBackup.Devices.AddDevice($fullBackupFilePath, "File")
 
     $Error.Clear()
 
-    function Resolve-Error ($ErrorRecord=$Error[0])
-    {
-        $ErrorRecord | Format-List * -Force
-        $ErrorRecord.InvocationInfo |Format-List *
-        $Exception = $ErrorRecord.Exception
-        for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
-        {
-            "$i" * 80
-            $Exception |Format-List * -Force
-        }
-    }
-
     try
     {
-        $backup.SqlBackup($server)
+        $fullBackup.SqlBackup($server)
     }
     catch [System.Exception]
     {
@@ -145,27 +138,58 @@ if ($db)
         Write-Error "Failed to backup ""$dbName"""
         exit 105
     }
+    # /Full backup
+
+    # Transaction Log Backup
+    $logBackupFileName = $backupFileNameFormat -f $dbName, $timestamp, "log"
+    $logBackupFilePath = Join-Path $backupDirPath $logBackupFileName
+
+    $logBackup                      = New-Object ("Microsoft.SqlServer.Management.Smo.Backup")
+    $logBackup.Action               = [Microsoft.SqlServer.Management.Smo.BackupActionType]::Log  # transaction log backup
+    $logBackup.BackupSetDescription = "Transaction log backup of $dbName"
+    $logBackup.BackupSetName        = "$dbName backup"
+    $logBackup.Database             = $dbName
+    $logBackup.MediaDescription     = "Disk"
+    $logBackup.LogTruncation        = "Truncate"
+    $logBackup.Devices.AddDevice($logBackupFilePath, "File")
+
+    $Error.Clear()
+
+    try
+    {
+        $logBackup.SqlBackup($server)
+    }
+    catch [System.Exception]
+    {
+        Resolve-Error
+        Write-Error "Failed to backup transaction logs for ""$dbName"""
+        exit 106
+    }
+    # /Transaction Log Backup
 
     if ($Error.Count -eq 0)
     {
-        Write-Output "Backed up database named ""$dbName"" to ""$backupFilePath"""
+        Write-Output "Backed up database named ""$dbName"" to [""$fullBackupFilePath"",""$logBackupFilePath""]"
         if ($zipBackup -eq "true")
         {
             Write-Output "Zipping the backup"
-            $output=invoke-expression 'cmd /c 7z a -tzip "$backupFilePath.zip" $backupFilePath'
+            $output=invoke-expression 'cmd /c 7z a -tzip "$backupFilePath.zip" $fullBackupFilePath $logBackupFilePath'
             Write-Output $output
             if ($output -match "Everything is Ok")
             {
                 if ($deleteSqlAfterZip -eq "true")
                 {
                     Write-Output "Deleting the bak file"
-                    Remove-Item $backupFilePath
+                    Remove-Item $fullBackupFilePath
+                    Remove-Item $logBackupFilePath
                 }
                 Set-ChefNode backupfilename $backupFileName".zip"
             }
         }
         else
         {
+            # TODO: This is technically two files now, could set this node attribute to an array safely since it's not
+            # used anywhere.  In fact the only place from which this line of code would be executed is the db_sqlserver::backup recipe
             Set-ChefNode backupfilename $backupFileName
         }
     }

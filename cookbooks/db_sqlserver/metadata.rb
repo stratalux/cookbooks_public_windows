@@ -40,8 +40,8 @@ attribute "db_sqlserver/backup/database_backup_dir",
 
 attribute "db_sqlserver/backup/backup_file_name_format",
   :display_name => "Backup file name format",
-  :description => "Format string with Powershell-style string format arguments for creating backup files. The 0 argument represents the database name and the 1 argument represents a generated time stamp. Ex: {0}_{1}.bak",
-  :default => "{0}_{1}.bak",
+  :description => "Format string with Powershell-style string format arguments for creating backup files. The 0 argument represents the database name, the 1 argument represents a generated time stamp and the 2 argument represents the backup contents (one of 'full' or 'log' indicating a full backup or transactional log backup). Ex: {0}_{1}_{2}.bak",
+  :default => "{0}_{1}_{2}.bak",
   :recipes => ["db_sqlserver::default", "db_sqlserver::backup", "db_sqlserver::backup_to_s3", "db_sqlserver::restore", "db_sqlserver::restore_once"]
 
 attribute "db_sqlserver/backup/existing_backup_file_name_pattern",
