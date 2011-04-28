@@ -29,6 +29,7 @@ $backupDirPath = Get-NewResource backup_dir_path
 $forceRestore = Get-NewResource force_restore
 $backupFileNamePattern = (Get-NewResource existing_backup_file_name_pattern) -f $dbName
 $statementTimeoutSeconds = Get-NewResource statement_timeout_seconds
+$restore_norecovery = Get-NewResource restore_norecovery
 
 # check if database exists before restoring.
 if (!$forceRestore -and (Get-ChefNode ($nodePath + "exists")))
@@ -54,8 +55,10 @@ Write-Verbose "Using backup directory ""$backupDirPath"""
 
 # select the latest backup file to restore
 $backupFiles = $backupDir.GetFiles($backupFileNamePattern)
-if ($backupFile = $backupFiles[-1])
+#if ($backupFile = $backupFiles[-1])
+$backupFiles | ForEach-Object
 {
+    $backupFile = $_
     # check restore history to see if this revision has already been applied,
     # even if the database was subsequently dropped. this is intended to support
     # script idempotency, but the behavior can be overridden by setting the
@@ -76,8 +79,13 @@ if ($backupFile = $backupFiles[-1])
     $restore      = New-Object("Microsoft.SqlServer.Management.Smo.Restore")
 
     $restore.Devices.Add($backupDevice)
-    $restore.NoRecovery      = $false
-    $restore.ReplaceDatabase = $true
+    $restore.NoRecovery      = $restore_norecovery
+
+    # TODO: This works with the "default" naming format, as long as the database doesn't contain "full". Should be more explicit, maybe a regex match?
+    if($backupFile.FullName.Contains("full"))
+    {
+      $restore.ReplaceDatabase = $true
+    }
 
     $Error.Clear()
     $backupHeader = $restore.ReadBackupHeader($server)

@@ -33,3 +33,4 @@ attribute :zip_backup, :equal_to => [ true, false ]
 attribute :delete_sql_after_zip, :equal_to => [ true, false ]
 attribute :max_old_backups_to_keep, :kind_of => [ String ]
 attribute :statement_timeout_seconds, :kind_of => [ Integer ]
+attribute :restore_norecovery, :equal_to => [ true, false], :default => false
