@@ -42,14 +42,14 @@ function Restore-Sql-Backup([System.IO.FileInfo]$backupFile, [System.Boolean]$is
     # script idempotency, but the behavior can be overridden by setting the
     # force_restore flag on the resource.
     $backupFilePath = $backupFile.FullName
-    Write-Output "Preparing to restore file $backupFilePath"
+    Write-Host "Preparing to restore file $backupFilePath"
     $backupFileName = Split-Path -leaf $backupFilePath
     if (!$forceRestore)
     {
         $restoredFilePath = Get-ChefNode ($nodePath + "restore_file_paths" + $backupFileName.ToLower())
         if ($restoredFilePath)
         {
-            Write-Warning "Not restoring ""$backupFilePath"" because an equivalent database was already restored from ""$restoredFilePath""."
+            Write-Host "Not restoring ""$backupFilePath"" because an equivalent database was already restored from ""$restoredFilePath""."
             return 0
         }
     }
@@ -70,21 +70,21 @@ function Restore-Sql-Backup([System.IO.FileInfo]$backupFile, [System.Boolean]$is
     $backupHeader = $restore.ReadBackupHeader($server)
     if ($Error.Count -ne 0)
     {
-        Write-Error "Failed to read backup header from ""$backupFilePath"""
-        Write-Warning "SQL Server fails to backup/restore to/from network drives but will accept the equivalent UNC path so long as the database user has sufficient network privileges. Ensure that the SQL_BACKUP_DIR_PATH environment variable does not refer to a shared drive."
+        Write-Host "Failed to read backup header from ""$backupFilePath"""
+        Write-Host "SQL Server fails to backup/restore to/from network drives but will accept the equivalent UNC path so long as the database user has sufficient network privileges. Ensure that the SQL_BACKUP_DIR_PATH environment variable does not refer to a shared drive."
         return 100
     }
     $headerDbName = $backupHeader.Rows[0]["DatabaseName"]
 
     if("$headerDbName" -eq ""){
-        Write-Error "***ERROR: Backup missing DatabaseName from the header."
-        Write-Output $backupHeader
+        Write-Host "***ERROR: Backup missing DatabaseName from the header."
+        Write-Host $backupHeader
         return 101
     }
 
     if ($headerDbName -ne $dbName)
     {
-        Write-Error "Name of database read from backup header ""$headerDbName"" does not match ""$dbName""".
+        Write-Host "Name of database read from backup header ""$headerDbName"" does not match ""$dbName""".
         return 101
     }
     $restore.Database = $headerDbName
@@ -98,14 +98,14 @@ function Restore-Sql-Backup([System.IO.FileInfo]$backupFile, [System.Boolean]$is
     catch [System.Exception]
     {
         Resolve-Error
-        Write-Error "Failed to restore database named ""$dbName"" from ""$backupFilePath"""
+        Write-Host "Failed to restore database named ""$dbName"" from ""$backupFilePath"""
         return 105
     }
 
 
     if ($Error.Count -eq 0)
     {
-        Write-Output "Restored database named ""$dbName"" from ""$backupFilePath"""
+        Write-Host "Restored database named ""$dbName"" from ""$backupFilePath"""
         Set-ChefNode ($nodePath + "exists") $True
         Set-ChefNode ($nodePath + "restore_file_paths" + $backupFileName.ToLower()) $backupFilePath
         Set-NewResource updated $True
@@ -113,7 +113,7 @@ function Restore-Sql-Backup([System.IO.FileInfo]$backupFile, [System.Boolean]$is
     }
     else
     {
-        Write-Error "Failed to restore database named ""$dbName"" from ""$backupFilePath"""
+        Write-Host "Failed to restore database named ""$dbName"" from ""$backupFilePath"""
         return 103
     }
 }
