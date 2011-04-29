@@ -47,10 +47,10 @@ function Restore-Sql-Backup ($backupFile, $is_full_backup, $restore_norecovery)
     $backupFilePath = $backupFile.FullName
 
     Write-Output "backupFilePath was $backupFilePath"
+    return 0
 
     $backupFileName = Split-Path -leaf $backupFilePath
     Write-Output "Result of Split-Path is $backupFileName"
-    return 0
     if (!$forceRestore)
     {
         $restoredFilePath = Get-ChefNode ($nodePath + "restore_file_paths" + $backupFileName.ToLower())
