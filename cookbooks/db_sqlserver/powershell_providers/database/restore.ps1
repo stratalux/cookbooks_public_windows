@@ -147,8 +147,6 @@ Write-Verbose "Using backup directory ""$backupDirPath"""
 
 # select the latest backup file to restore
 $backupFiles = $backupDir.GetFiles($backupFileNamePattern)
-#if ($backupFile = $backupFiles[-1])
-
 # TODO: This logic may be a bit sketchy. We're checking to see if the newest file in the directory is a log or full backup file.
 # Since the log file is created last during a backup (perhaps by milliseconds) and is alphanumerically "greater" ("log" > "full")
 # it should always be the result of this next assignment if both a full and log backup file exist.
@@ -159,7 +157,7 @@ if($testfile -eq $null)
     exit 104
 }
 
-# TODO: This works with the "default" naming format, as long as the database doesn't contain "full". Should be more explicit, maybe a regex match?
+# TODO: This works with the "default" naming format, as long as the database doesn't contain "log". Should be more explicit, maybe a regex match?
 $has_transaction_logs = $testfile.FullName.Contains("log")
 
 if($has_transaction_logs)
@@ -171,11 +169,14 @@ if($has_transaction_logs)
   if($fullBackupFile)
   {
     $result = Restore-Sql-Backup($fullBackupFile, $true, $restore_norecovery)
+    Write-Output $result
   }
   else
   {
     Write-Error "The full backup file (found with $backupFiles[-2]) was null, here's what the original search of the directory looked like"
     Write-Error $backupFiles
+    # TODO: Not sure what the error/exit code convention is, I'm reusing another "file not found" exit code.
+    exit 104
   }
   if($result -ne 0) { exit $result }
   if($logBackupFile)
