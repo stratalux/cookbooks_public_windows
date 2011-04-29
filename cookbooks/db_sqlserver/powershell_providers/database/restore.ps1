@@ -34,6 +34,9 @@ $restore_norecovery = Get-NewResource restore_norecovery
 # A function definition for restoring full backup or transaction log files
 function Restore-Sql-Backup ($backupFile, $is_full_backup, $restore_norecovery)
 {
+    # Cheats so I don't have to pass everything for the resource into the function
+    $dbName = Get-NewResource name
+
     Write-Output "Preparing to restore file "+$backupFile.FullName
 
     # check restore history to see if this revision has already been applied,
@@ -159,12 +162,34 @@ $has_transaction_logs = $testfile.FullName.Contains("log")
 
 if($has_transaction_logs)
 {
+  Write-Output "Restoring $dbName from a full backup and transaction log backup file pair"
   $fullBackupFile = $backupFiles[-2]
-  $result = Restore-Sql-Backup($backupFiles[-2], $true, $restore_norecovery)
+  $logBackupFile = $backupFiles[-1]
+  $result = 0
+  if($fullBackupFile)
+  {
+    $result = Restore-Sql-Backup($fullBackupFile, $true, $restore_norecovery)
+  }
+  else
+  {
+    Write-Error "The full backup file (found with $backupFiles[-2]) was null, here's what the original search of the directory looked like"
+    Write-Error $backupFiles
+  }
   if($result -ne 0) { exit $result }
-  exit Restore-Sql-Backup($backupFiles[-1], $false, $restore_norecovery)
+  if($logBackupFile)
+  {
+    exit Restore-Sql-Backup($logBackupFile, $false, $restore_norecovery)
+  }
+  else
+  {
+    Write-Error "The log backup file (found with $backupFiles[-1]) was null, here's what the original search of the directory looked like"
+    Write-Error $backupFiles
+    # TODO: Not sure what the error/exit code convention is, I'm reusing another "file not found" exit code.
+    exit 104
+  }
 }
 else
 {
-  exit Restore-Sql-Backup($backupFiles[-1], $true, $restore_norecovery)
+  Write-Output "Restoring $dbName from a full backup file"
+  exit Restore-Sql-Backup($testfile, $true, $restore_norecovery)
 }
