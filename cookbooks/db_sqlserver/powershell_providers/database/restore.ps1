@@ -37,13 +37,17 @@ function Restore-Sql-Backup ($backupFile, $is_full_backup, $restore_norecovery)
     # Cheats so I don't have to pass everything for the resource into the function
     $dbName = Get-NewResource name
 
-    Write-Output "Preparing to restore file ",$backupFile.FullName
+    Write-Output "Preparing to restore file "
+    Write-Output $backupFile.FullName
 
     # check restore history to see if this revision has already been applied,
     # even if the database was subsequently dropped. this is intended to support
     # script idempotency, but the behavior can be overridden by setting the
     # force_restore flag on the resource.
     $backupFilePath = $backupFile.FullName
+
+    Write-Output "backupFilePath was $backupFilePath"
+
     $backupFileName = Split-Path -leaf $backupFilePath
     Write-Output "Result of Split-Path is $backupFileName"
     return 0
