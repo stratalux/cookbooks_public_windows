@@ -56,9 +56,9 @@ Write-Verbose "Using backup directory ""$backupDirPath"""
 # select the latest backup file to restore
 $backupFiles = $backupDir.GetFiles($backupFileNamePattern)
 #if ($backupFile = $backupFiles[-1])
-$backupFiles | ForEach-Object
+foreach($backupFile in $backupFiles)
 {
-    $backupFile = $_
+    Write-Output "Preparing to restore file $backupFile.FullName"
     # check restore history to see if this revision has already been applied,
     # even if the database was subsequently dropped. this is intended to support
     # script idempotency, but the behavior can be overridden by setting the
