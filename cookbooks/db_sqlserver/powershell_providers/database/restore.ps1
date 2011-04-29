@@ -174,6 +174,9 @@ if($has_transaction_logs)
   $result = 0
   if($fullBackupFile)
   {
+    $fullBackType = $fullBackupFile.GetType().FullName
+    Write-Output "Full Backup File type is $fullBackType"
+    Write-Output $fullBackupFile
     $result = Restore-Sql-Backup($fullBackupFile, $true, $restore_norecovery)
     Write-Output $result
   }
