@@ -38,6 +38,8 @@ function Restore-Sql-Backup ($backupFile, $is_full_backup, $restore_norecovery)
     $dbName = Get-NewResource name
 
     Write-Output "Preparing to restore file "+$backupFile.FullName
+    Write-Output $backupFile
+    return 0
 
     # check restore history to see if this revision has already been applied,
     # even if the database was subsequently dropped. this is intended to support
