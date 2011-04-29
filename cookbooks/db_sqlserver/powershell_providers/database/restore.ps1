@@ -32,14 +32,10 @@ $statementTimeoutSeconds = Get-NewResource statement_timeout_seconds
 $restore_norecovery = Get-NewResource restore_norecovery
 
 # A function definition for restoring full backup or transaction log files
-function Restore-Sql-Backup ($backupFile, $is_full_backup, $restore_norecovery)
+function Restore-Sql-Backup([System.IO.FileInfo]$backupFile, [System.Boolean]$is_full_backup, [System.Boolean]$restore_norecovery)
 {
     # Cheats so I don't have to pass everything for the resource into the function
     $dbName = Get-NewResource name
-
-    $typezor = $backupFile.GetType().FullName
-
-    Write-Output "Backup File Passed in is a ($typezor)"
 
     # check restore history to see if this revision has already been applied,
     # even if the database was subsequently dropped. this is intended to support
@@ -47,12 +43,7 @@ function Restore-Sql-Backup ($backupFile, $is_full_backup, $restore_norecovery)
     # force_restore flag on the resource.
     $backupFilePath = $backupFile.FullName
     Write-Output "Preparing to restore file $backupFilePath"
-
-    Write-Output "backupFilePath was $backupFilePath"
-    return 0
-
     $backupFileName = Split-Path -leaf $backupFilePath
-    Write-Output "Result of Split-Path is $backupFileName"
     if (!$forceRestore)
     {
         $restoredFilePath = Get-ChefNode ($nodePath + "restore_file_paths" + $backupFileName.ToLower())
@@ -174,11 +165,7 @@ if($has_transaction_logs)
   $result = 0
   if($fullBackupFile)
   {
-    $fullBackType = $fullBackupFile.GetType().FullName
-    Write-Output "Full Backup File type is $fullBackType"
-    Write-Output $fullBackupFile
-    $result = Restore-Sql-Backup($fullBackupFile, $true, $restore_norecovery)
-    Write-Output $result
+    $result = Restore-Sql-Backup $fullBackupFile $true $restore_norecovery
   }
   else
   {
@@ -190,7 +177,7 @@ if($has_transaction_logs)
   if($result -ne 0) { exit $result }
   if($logBackupFile)
   {
-    exit Restore-Sql-Backup($logBackupFile, $false, $restore_norecovery)
+    exit Restore-Sql-Backup $logBackupFile $false $restore_norecovery
   }
   else
   {
@@ -203,5 +190,5 @@ if($has_transaction_logs)
 else
 {
   Write-Output "Restoring $dbName from a full backup file"
-  exit Restore-Sql-Backup($testfile, $true, $restore_norecovery)
+  exit Restore-Sql-Backup $testfile $true $restore_norecovery
 }
