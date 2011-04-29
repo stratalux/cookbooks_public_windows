@@ -31,6 +31,93 @@ $backupFileNamePattern = (Get-NewResource existing_backup_file_name_pattern) -f 
 $statementTimeoutSeconds = Get-NewResource statement_timeout_seconds
 $restore_norecovery = Get-NewResource restore_norecovery
 
+# A function definition for restoring full backup or transaction log files
+function Restore-Sql-Backup ($backupFile, $is_full_backup, $restore_norecovery)
+{
+    Write-Output "Preparing to restore file "+$backupFile.FullName
+
+    # check restore history to see if this revision has already been applied,
+    # even if the database was subsequently dropped. this is intended to support
+    # script idempotency, but the behavior can be overridden by setting the
+    # force_restore flag on the resource.
+    $backupFilePath = $backupFile.FullName
+    $backupFileName = Split-Path -leaf $backupFilePath
+    if (!$forceRestore)
+    {
+        $restoredFilePath = Get-ChefNode ($nodePath + "restore_file_paths" + $backupFileName.ToLower())
+        if ($restoredFilePath)
+        {
+            Write-Warning "Not restoring ""$backupFilePath"" because an equivalent database was already restored from ""$restoredFilePath""."
+            return 0
+        }
+    }
+
+    $backupDevice = New-Object("Microsoft.SqlServer.Management.Smo.BackupDeviceItem") ($backupFilePath, "File")
+    $restore      = New-Object("Microsoft.SqlServer.Management.Smo.Restore")
+
+    $restore.Devices.Add($backupDevice)
+    $restore.NoRecovery      = $restore_norecovery
+
+
+    if($is_full_backup)
+    {
+      $restore.ReplaceDatabase = $true
+    }
+
+    $Error.Clear()
+    $backupHeader = $restore.ReadBackupHeader($server)
+    if ($Error.Count -ne 0)
+    {
+        Write-Error "Failed to read backup header from ""$backupFilePath"""
+        Write-Warning "SQL Server fails to backup/restore to/from network drives but will accept the equivalent UNC path so long as the database user has sufficient network privileges. Ensure that the SQL_BACKUP_DIR_PATH environment variable does not refer to a shared drive."
+        return 100
+    }
+    $headerDbName = $backupHeader.Rows[0]["DatabaseName"]
+
+    if("$headerDbName" -eq ""){
+        Write-Error "***ERROR: Backup missing DatabaseName from the header."
+        Write-Output $backupHeader
+        return 101
+    }
+
+    if ($headerDbName -ne $dbName)
+    {
+        Write-Error "Name of database read from backup header ""$headerDbName"" does not match ""$dbName""".
+        return 101
+    }
+    $restore.Database = $headerDbName
+
+    # restore.
+    start-sleep -seconds 1
+
+    try {
+        $restore.SqlRestore($server)
+    }
+    catch [System.Exception]
+    {
+        Resolve-Error
+        Write-Error "Failed to restore database named ""$dbName"" from ""$backupFilePath"""
+        return 105
+    }
+
+
+    if ($Error.Count -eq 0)
+    {
+        Write-Output "Restored database named ""$dbName"" from ""$backupFilePath"""
+        Set-ChefNode ($nodePath + "exists") $True
+        Set-ChefNode ($nodePath + "restore_file_paths" + $backupFileName.ToLower()) $backupFilePath
+        Set-NewResource updated $True
+        return 0
+    }
+    else
+    {
+        Write-Error "Failed to restore database named ""$dbName"" from ""$backupFilePath"""
+        return 103
+    }
+}
+
+# Actual Logic Starts Here
+
 # check if database exists before restoring.
 if (!$forceRestore -and (Get-ChefNode ($nodePath + "exists")))
 {
@@ -56,90 +143,28 @@ Write-Verbose "Using backup directory ""$backupDirPath"""
 # select the latest backup file to restore
 $backupFiles = $backupDir.GetFiles($backupFileNamePattern)
 #if ($backupFile = $backupFiles[-1])
-foreach($backupFile in $backupFiles)
-{
-    Write-Output "Preparing to restore file $backupFile.FullName"
-    # check restore history to see if this revision has already been applied,
-    # even if the database was subsequently dropped. this is intended to support
-    # script idempotency, but the behavior can be overridden by setting the
-    # force_restore flag on the resource.
-    $backupFilePath = $backupFile.FullName
-    $backupFileName = Split-Path -leaf $backupFilePath
-    if (!$forceRestore)
-    {
-        $restoredFilePath = Get-ChefNode ($nodePath + "restore_file_paths" + $backupFileName.ToLower())
-        if ($restoredFilePath)
-        {
-            Write-Warning "Not restoring ""$backupFilePath"" because an equivalent database was already restored from ""$restoredFilePath""."
-            exit 0
-        }
-    }
 
-    $backupDevice = New-Object("Microsoft.SqlServer.Management.Smo.BackupDeviceItem") ($backupFilePath, "File")
-    $restore      = New-Object("Microsoft.SqlServer.Management.Smo.Restore")
-
-    $restore.Devices.Add($backupDevice)
-    $restore.NoRecovery      = $restore_norecovery
-
-    # TODO: This works with the "default" naming format, as long as the database doesn't contain "full". Should be more explicit, maybe a regex match?
-    if($backupFile.FullName.Contains("full"))
-    {
-      $restore.ReplaceDatabase = $true
-    }
-
-    $Error.Clear()
-    $backupHeader = $restore.ReadBackupHeader($server)
-    if ($Error.Count -ne 0)
-    {
-        Write-Error "Failed to read backup header from ""$backupFilePath"""
-        Write-Warning "SQL Server fails to backup/restore to/from network drives but will accept the equivalent UNC path so long as the database user has sufficient network privileges. Ensure that the SQL_BACKUP_DIR_PATH environment variable does not refer to a shared drive."
-        exit 100
-    }
-    $headerDbName = $backupHeader.Rows[0]["DatabaseName"]
-    
-    if("$headerDbName" -eq ""){ 
-        Write-Error "***ERROR: Backup missing DatabaseName from the header." 
-        Write-Output $backupHeader
-        exit 101
-    }
-    
-    if ($headerDbName -ne $dbName)
-    {
-        Write-Error "Name of database read from backup header ""$headerDbName"" does not match ""$dbName""".
-        exit 101
-    }
-    $restore.Database = $headerDbName
-
-    # restore.
-    start-sleep -seconds 1
-    
-    try {
-        $restore.SqlRestore($server)
-    }
-    catch [System.Exception]
-    {
-        Resolve-Error
-        Write-Error "Failed to restore database named ""$dbName"" from ""$backupFilePath"""
-        exit 105
-    }
-    
-    
-    if ($Error.Count -eq 0)
-    {
-        Write-Output "Restored database named ""$dbName"" from ""$backupFilePath"""
-        Set-ChefNode ($nodePath + "exists") $True
-        Set-ChefNode ($nodePath + "restore_file_paths" + $backupFileName.ToLower()) $backupFilePath
-        Set-NewResource updated $True
-        exit 0
-    }
-    else
-    {
-        Write-Error "Failed to restore database named ""$dbName"" from ""$backupFilePath"""
-        exit 103
-    }
-}
-else
+# TODO: This logic may be a bit sketchy. We're checking to see if the newest file in the directory is a log or full backup file.
+# Since the log file is created last during a backup (perhaps by milliseconds) and is alphanumerically "greater" ("log" > "full")
+# it should always be the result of this next assignment if both a full and log backup file exist.
+$testfile = $backupFiles[-1]
+if($testfile -eq $null)
 {
     Write-Error "There was no backup file matching ""$backupFileNamePattern"" to restore."
     exit 104
+}
+
+# TODO: This works with the "default" naming format, as long as the database doesn't contain "full". Should be more explicit, maybe a regex match?
+$has_transaction_logs = $testfile.FullName.Contains("log")
+
+if($has_transaction_logs)
+{
+  $fullBackupFile = $backupFiles[-2]
+  $result = Restore-Sql-Backup($backupFiles[-2], $true, $restore_norecovery)
+  if($result -ne 0) { exit $result }
+  exit Restore-Sql-Backup($backupFiles[-1], $false, $restore_norecovery)
+}
+else
+{
+  exit Restore-Sql-Backup($backupFiles[-1], $true, $restore_norecovery)
 }
