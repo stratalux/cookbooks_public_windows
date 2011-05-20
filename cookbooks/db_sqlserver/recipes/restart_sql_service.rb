@@ -47,6 +47,9 @@ powershell "Restart the MSSQL Server" do
         net stop $sqlServiceName
         net start $sqlServiceName
     }
+
+    # Exit with a smile
+    exit 0
 POWERSHELL_SCRIPT
 
   source(powershell_script)
