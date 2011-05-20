@@ -26,17 +26,16 @@
 powershell "Restart the MSSQL Server" do
   # Create the powershell script
   powershell_script = <<'POWERSHELL_SCRIPT'
-    $sqlServiceName='MSSQL$SQLEXPRESS'
-    $serviceController = get-service $sqlServiceName 2> $null
-    if ($Null -eq $serviceController)
+    if (get-service | findstr 'MSSQL\$SQLEXPRESS') {
+      $sqlServiceName='MSSQL$SQLEXPRESS'
+    } else {
+      $sqlServiceName='MSSQLSERVER'
+    }
+    $serviceController = get-service $sqlServiceName -ErrorAction SilentlyContinue
+    if ($serviceController -eq $Null)
     {
-        $sqlServiceName='MSSQLSERVER'
-        $serviceController = get-service $sqlServiceName 2> $null
-        if ($Null -eq $serviceController)
-        {
-            Write-Error "SQL Server service is not installed"
-            exit 110
-        }
+        Write-Error "SQL Server service is not installed"
+        exit 110
     }
 
     if ($serviceController.Status -eq "Stopped")
