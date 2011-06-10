@@ -15,7 +15,7 @@
 $site_name = Get-NewResource site_name
 $physical_path = Get-NewResource physical_path
 $appcmd_path = "$env:systemroot\system32\inetsrv\APPCMD.exe"
-if ($env:PROCESSOR_ARCHITECTURE -ne "x86)
+if ($env:PROCESSOR_ARCHITECTURE -ne "x86")
 {
   $appcmd_path = "$env:systemroot\sysnative\inetsrv\APPCMD.exe"
 }
