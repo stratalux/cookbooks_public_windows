@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-if !File.directory?(node[:app_iis][:releases_dir]) || Dir.entries(node[:app_iis][:releases_dir].size == 2)
+if !File.directory?(node[:app_iis][:releases_dir]) || Dir.entries(node[:app_iis][:releases_dir]).size == 2
 
   app_iis_update_code_s3 "Download Code & Configure IIS" do
     access_key_id node[:aws][:access_key_id]
