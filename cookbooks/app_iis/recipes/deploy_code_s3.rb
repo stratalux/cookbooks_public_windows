@@ -24,7 +24,8 @@ if !File.directory?(node[:app_iis][:releases_dir]) || Dir.entries(node[:app_iis]
 
 else
 
-  newest_release_path = Dir.entries(node[:app_iis][:releases_dir]).sort{|a,b| b <=> a }.first
+  newest_release_dir = Dir.entries(node[:app_iis][:releases_dir]).sort{|a,b| b <=> a }.first
+  newest_release_path = ::File.join(node[:app_iis][:releases_dir], newest_release_dir)
 
   app_iis_site "Default Web Site" do
     physical_path newest_release_path
