@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-if !File.directory?(node[:app_iis][:releases_dir]) || File.size(node[:app_iis][:releases_dir] == 2)
+if !File.directory?(node[:app_iis][:releases_dir]) || Dir.entries(node[:app_iis][:releases_dir].size == 2)
 
   app_iis_update_code_svn "Download Code & Configure IIS" do
     repo_path node[:svn][:repo_path]
