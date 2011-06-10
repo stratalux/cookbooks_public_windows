@@ -24,6 +24,11 @@ if !File.directory?(node[:app_iis][:releases_dir]) || Dir.entries(node[:app_iis]
 
 else
 
-  Chef::Log.info("Code was already deployed at [#{node[:app_iis][:releases_dir]}] skipping...")
+  newest_release_path = Dir.entries(node[:app_iis][:releases_dir]).sort{|a,b| b <=> a }.first
+
+  app_iis_site "Default Web Site" do
+    physical_path newest_release_path
+    action :update
+  end
 
 end
