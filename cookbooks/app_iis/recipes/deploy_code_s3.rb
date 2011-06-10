@@ -22,4 +22,8 @@ if !File.directory?(node[:app_iis][:releases_dir]) || File.size(node[:app_iis][:
     releases_dir node[:app_iis][:releases_dir]
   end
 
+else
+
+  Chef::Log.info("Code was already deployed at [#{node[:app_iis][:releases_dir]}] skipping...")
+
 end
