@@ -47,7 +47,7 @@ if (0 -ne $Error.Count)
 }
 
 # client connection.
-$sqlClient = new-object System.Data.SqlClient.SqlConnection "server=$serverName;database=$dbName;trusted_connection=true;"
+$sqlClient = new-object System.Data.SqlClient.SqlConnection "server=$serverName;database=$dbName;trusted_connection=true;Connection Timeout=600;"
 $sqlClient.Open()
 if (0 -ne $Error.Count)
 {
