@@ -53,6 +53,8 @@ $sqlClient.Open()
 $timeout = $sqlClient.ConnectionTimeout
 Write-Output "The connection timeout is ($timeout seconds)"
 Write-Output "The server name is $server_name"
+Write-Output "The dbname is $dbName"
+Write-Output "The commands are $commands"
 
 if (0 -ne $Error.Count)
 {
