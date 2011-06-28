@@ -47,12 +47,10 @@ if (0 -ne $Error.Count)
 }
 
 # client connection.
-$sqlClient = new-object System.Data.SqlClient.SqlConnection "server=$serverName;database=$dbName;trusted_connection=true;Connect Timeout=600;"
+$sqlClient = new-object System.Data.SqlClient.SqlConnection "server=$serverName;database=$dbName;trusted_connection=true;"
 $sqlClient.Open()
 
-$timeout = $sqlClient.ConnectionTimeout
-Write-Output "The connection timeout is ($timeout seconds)"
-Write-Output "The server name is $server_name"
+Write-Output "The server name is $serverName"
 Write-Output "The dbname is $dbName"
 Write-Output "The commands are $commands"
 
@@ -62,6 +60,7 @@ if (0 -ne $Error.Count)
 }
 
 $sqlCommand = New-Object System.Data.SQLClient.SQLCommand
+$sqlCommand.CommandTimeout = 600
 $sqlCommand.Connection = $sqlClient
 $result = $True
 foreach ($command in $commands)
