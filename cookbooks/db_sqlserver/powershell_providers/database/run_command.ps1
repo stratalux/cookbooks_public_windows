@@ -47,8 +47,11 @@ if (0 -ne $Error.Count)
 }
 
 # client connection.
-$sqlClient = new-object System.Data.SqlClient.SqlConnection "server=$serverName;database=$dbName;trusted_connection=true;Connection Timeout=600;"
+$sqlClient = new-object System.Data.SqlClient.SqlConnection "server=$serverName;database=$dbName;trusted_connection=true;Connect Timeout=600;"
 $sqlClient.Open()
+
+Write-Output "The connection timeout is ($sqlClient.ConnectionTimeout seconds)"
+
 if (0 -ne $Error.Count)
 {
     exit 104
