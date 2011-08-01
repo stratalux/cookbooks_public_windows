@@ -60,7 +60,8 @@ if (0 -ne $Error.Count)
 }
 
 $sqlCommand = New-Object System.Data.SQLClient.SQLCommand
-$sqlCommand.CommandTimeout = 600
+# Set the timeout to 23hr
+$sqlCommand.CommandTimeout = 1380
 $sqlCommand.Connection = $sqlClient
 $result = $True
 foreach ($command in $commands)
